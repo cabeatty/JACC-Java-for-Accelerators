@@ -1,0 +1,14 @@
+<component name="ArtifactManager">
+  <artifact type="jar" build-on-make="true" name="Annotations:jar">
+    <output-path>$PROJECT_DIR$/out/artifacts/Annotations_jar</output-path>
+    <root id="archive" name="Annotations.jar">
+      <element id="module-output" name="Annotations" />
+      <element id="extracted-dir" path="E:/Program Files/JCUDA/JCuda-All-0.7.5b-bin-windows-x86_64/jcuda-0.7.5b.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="E:/Program Files/JCUDA/JCuda-All-0.7.5b-bin-windows-x86_64/jcufft-0.7.5b.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="E:/Program Files/JCUDA/JCuda-All-0.7.5b-bin-windows-x86_64/jcublas-0.7.5b.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="E:/Program Files/JCUDA/JCuda-All-0.7.5b-bin-windows-x86_64/jcurand-0.7.5b.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="E:/Program Files/JCUDA/JCuda-All-0.7.5b-bin-windows-x86_64/jcusolver-0.7.5b.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="E:/Program Files/JCUDA/JCuda-All-0.7.5b-bin-windows-x86_64/jcusparse-0.7.5b.jar" path-in-jar="/" />
+    </root>
+  </artifact>
+</component>

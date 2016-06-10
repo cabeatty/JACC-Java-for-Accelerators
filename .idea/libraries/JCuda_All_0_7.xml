@@ -1,0 +1,13 @@
+<component name="libraryTable">
+  <library name="JCuda-All-0.7">
+    <CLASSES>
+      <root url="file://E:/Program Files/JCUDA/JCuda-All-0.7.5b-bin-windows-x86_64" />
+    </CLASSES>
+    <JAVADOC />
+    <NATIVE>
+      <root url="file://E:/Program Files/JCUDA/JCuda-All-0.7.5b-bin-windows-x86_64" />
+    </NATIVE>
+    <SOURCES />
+    <jarDirectory url="file://E:/Program Files/JCUDA/JCuda-All-0.7.5b-bin-windows-x86_64" recursive="false" />
+  </library>
+</component>
