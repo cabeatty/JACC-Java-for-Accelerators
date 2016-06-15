@@ -1,6 +1,5 @@
 package Annotations;
 
-@Immutable
 public class someMethods
 {
 	public int x = 5;

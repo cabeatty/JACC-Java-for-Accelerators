@@ -7,38 +7,37 @@ import jcuda.Sizeof;
 import jcuda.jcublas.JCublas;
 import segmm.Annotations.*;
 
+//@valPull({"h_A[d_A]", "h_B[d_B]", "h_C[d_C]"})
+@targetData({"mapto, h_A, d_A", "mapto, h_B, d_B", "maptofrom, h_C, d_C"})
 class segmmTest
 {
 	// Matrix size
 	private static final int N = 275;
+	public static Pointer d_A = new Pointer();
+	public static Pointer d_B = new Pointer();
+	public static Pointer d_C = new Pointer();
+	public static float alpha = 1.0f;
+	public static float beta = 0.0f;
+	public static int n2 = N * N;
+	public static int i;
+
+	public static float h_A[] = new float[n2];
+	public static float h_B[] = new float[n2];
+	public static float h_C[] = new float[n2];
 
 	// Main
-	@mapto({"h_A,d_A,float,n2", "h_B,d_B,float,n2"}) //@mapto({"h_A[d_A]", "h_B[d_B]"}) @maptofrom({"h_C[d_C]"})
 	public static void main(String args[])
 	{
-		Pointer d_A = new Pointer();
-		Pointer d_B = new Pointer();
-		Pointer d_C = new Pointer();
-		float alpha = 1.0f;
-		float beta = 0.0f;
-		int n2 = N * N;
-		int i;
-
-		float h_A[] = new float[n2];
-		float h_B[] = new float[n2];
-		float h_C[] = new float[n2];
-
     // Initialize JCublas
 		JCublas.cublasInit();
 
     // Fill the matrices with test data
-		for (i = 0; i < n2; i++)
+		for (int i = 0; i < n2; i++)
 		{
 			h_A[i] = (float)Math.random();
 			h_B[i] = (float)Math.random();
 			h_C[i] = (float)Math.random();
 		}
-
     ///* Allocate device memory for the matrices
 		JCublas.cublasAlloc(n2, Sizeof.FLOAT, d_A);
 		JCublas.cublasAlloc(n2, Sizeof.FLOAT, d_B);

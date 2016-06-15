@@ -25,7 +25,6 @@ import javax.lang.model.SourceVersion;
 import javax.tools.Diagnostic;
 import javax.tools.JavaFileObject;
 
-import static javax.lang.model.util.ElementFilter.*;
 
 
 @SupportedAnnotationTypes("Annotations.valPull")
@@ -33,54 +32,129 @@ import static javax.lang.model.util.ElementFilter.*;
 
 public class valPullP extends AbstractProcessor
 {
-	private Trees trees;
-
-	@Override
-	public synchronized void init(ProcessingEnvironment processingEnv){
-		super.init(processingEnv);
-		trees = Trees.instance(processingEnv);
-	}
-
 	@Override
 	public boolean process(final Set<? extends TypeElement> annotations, final RoundEnvironment roundEnv)
 	{
 		for (final Element elm : roundEnv.getElementsAnnotatedWith(valPull.class))
 		{
 			valPull val = elm.getAnnotation(valPull.class);
-			String[] cont = val.value();
+			int count = val.value().length;                 //length of the array value() stored within the annotation
+			String[] valIp = val.value();                   //copy's information from value() to local String[] valIp
+			List<String[]> valLoc = new ArrayList<>();
 
-			final TreePathScanner< Object, CompilationUnitTree> scanner = new TreePathScanner<Object, CompilationUnitTree>()
+			for(int i = 0; i < count; i++)
 			{
-				@Override
-				public Trees visitClass(final ClassTree classTree, final CompilationUnitTree unitTree)
-				{
+				valIp[i] = valIp[i].replaceAll("]", "");
+				String[] z = valIp[i].split("\\[");
+				valLoc.add(z);
+			}
 
-					return trees;
-				}
-			};
-
-			/*if (elm instanceof ExecutableElement)
+			if (elm instanceof TypeElement)
 			{
-				final ExecutableElement executableElement = (ExecutableElement) elm;
-				processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE, executableElement.getSimpleName().toString());
+				final TypeElement typeElement = (TypeElement) elm;
+				final PackageElement packageElement = (PackageElement)typeElement.getEnclosingElement();
 
-				for(final Element encElm: executableElement.getEnclosedElements())
+				try
 				{
-					processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE, "2\n");
-					if(encElm instanceof VariableElement)
+					final String oldClassName = typeElement.getSimpleName().toString();
+					final String oldClassPath = packageElement.getQualifiedName() + "." + oldClassName;
+					final String newClassName = typeElement.getSimpleName().toString() + "Bp";
+					final String newClassPath = packageElement.getQualifiedName() + "." + newClassName;
+
+					final JavaFileObject fileObject = processingEnv.getFiler().createSourceFile
+							(
+									newClassPath
+							);
+					try(Writer wr = fileObject.openWriter())
 					{
-						final VariableElement variableElement = (VariableElement) encElm;
-						String name = variableElement.getSimpleName().toString();
-						String type = variableElement.asType().toString();
-						String full = ("Found: " + type + " " + name + "\n");
-						processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE, full);
+						wr.append("package " + packageElement.getQualifiedName() + ";\n\n");
+						wr.append("import jcuda.Pointer;\n");
+						wr.append("import jcuda.Sizeof;\n");
+						wr.append("import jcuda.jcublas.JCublas;\n");
+						wr.append("import " + oldClassPath + ";\n\n");
+						wr.append( "public class " + newClassName + " \n{\n" );
+
+						wr.append("\tpublic static void mapto()\n");
+						wr.append("\t{\n");
+
+						for(final Element encElm: typeElement.getEnclosedElements())
+						{
+							if(encElm instanceof VariableElement)
+							{
+								VariableElement tempVar = (VariableElement) encElm;
+								for(String[] valLocStr : valLoc)
+								{
+									if(tempVar.getSimpleName().toString().equals(valLocStr[0]))
+									{
+										wr.append(
+												"\t\tJCublas.cublasAlloc(" + oldClassName + ".n2, Sizeof." +
+												tempVar.asType().toString().replaceAll("\\[\\]", "").toUpperCase() +
+												", " + oldClassName + "." + valLocStr[1] +  ");\n"
+												);
+									}
+								}
+							}
+						}
+
+						wr.append("\n");
+
+						for(final Element encElm: typeElement.getEnclosedElements())
+						{
+							if (encElm instanceof VariableElement)
+							{
+								VariableElement tempVar = (VariableElement) encElm;
+								for(String[] valLocStr : valLoc)
+								{
+									if(tempVar.getSimpleName().toString().equals(valLocStr[0]))
+									{
+										wr.append(
+												"\t\tJCublas.cublasSetVector(" + oldClassName  + ".n2, Sizeof." +
+												tempVar.asType().toString().replaceAll("\\[\\]", "").toUpperCase() +
+												", Pointer.to(" + oldClassName + "." + valLocStr[0] + "), 1, " +
+												oldClassName + "." + valLocStr[1] + ", 1);\n"
+										);
+									}
+								}
+							}
+						}
+						wr.append("\t}\n");
+
+						wr.append("\n");
+
+						wr.append("\tpublic static void free()\n");
+						wr.append("\t{\n");
+
+						for(final Element encElm: typeElement.getEnclosedElements())
+						{
+							if (encElm instanceof VariableElement)
+							{
+								VariableElement tempVar = (VariableElement) encElm;
+								for(String[] valLocStr : valLoc)
+								{
+									if(tempVar.getSimpleName().toString().equals(valLocStr[0]))
+									{
+										wr.append(
+												"\t\tJCublas.cublasFree(" + oldClassName + "." + valLocStr[1] + ");\n"
+										);
+									}
+								}
+							}
+						}
+
+						wr.append("\t}\n");
+						wr.append( "}");
 					}
 				}
-			}*/
-
-			final TreePath path = trees.getPath( elm );
-			scanner.scan( path, path.getCompilationUnit() );
+				catch(final IOException ex)
+				{
+					processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, ex.getMessage());
+				}
+			}
+			else
+			{
+				processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "@valLoc needs to be on TypeElement");
+			}
 		}
-		return true;
+		return false;
 	}
 }
