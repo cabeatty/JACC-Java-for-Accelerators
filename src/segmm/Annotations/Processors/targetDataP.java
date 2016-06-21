@@ -65,6 +65,7 @@ public class targetDataP extends AbstractProcessor
 					final String oldClassPath = packageElement.getQualifiedName() + "." + oldClassName; //File path to the annotated class
 					final String newClassName = typeElement.getSimpleName().toString() + "Bp";          //Name of the generated class
 					final String newClassPath = packageElement.getQualifiedName() + "." + newClassName; //File path to the generated class
+					final String oldClassObj = oldClassName + "Obj";
 
 					//Creates new class with same name as annotated class appended with 'Bp'
 					final JavaFileObject fileObject = processingEnv.getFiler().createSourceFile
@@ -79,7 +80,8 @@ public class targetDataP extends AbstractProcessor
 						wr.append("import jcuda.Sizeof;\n");
 						wr.append("import jcuda.jcublas.JCublas;\n");
 						wr.append("import " + oldClassPath + ";\n\n");
-						wr.append( "public class " + newClassName + " \n{\n" );
+						wr.append("public class " + newClassName + " \n{\n" );
+						wr.append("\tpublic static " + oldClassName + " " + oldClassObj + " = new " + oldClassName + "();\n\n");
 
 						/*---------------------------------------------<<MAPTO>>-------------------------------------------------*/
 						/*creates new method 'mapto' that handles
@@ -99,10 +101,10 @@ public class targetDataP extends AbstractProcessor
 										if (valLocStr[0].equals("mapto") | valLocStr[0].equals("maptofrom"))    //Checks syntax of array and makes sure user wants to send said variable to the GPU
 										{
 											wr.append(
-													"\t\tJCublas.cublasAlloc(" + oldClassName + ".n2, Sizeof." +
+													"\t\tJCublas.cublasAlloc(" + oldClassObj + "." + valLocStr[1] + ".length, Sizeof." +
 													tempVar.asType().toString().replaceAll("\\[\\]", "").toUpperCase() +
-													", " + oldClassName + "." + valLocStr[2] + ");\n"
-											);
+													", " + oldClassObj + "." + valLocStr[2] + ");\n"
+											);  //This writes the JCublas.cublasAlloc(...) function for each of the desired variables into the new file
 										}
 									}
 								}
@@ -122,11 +124,11 @@ public class targetDataP extends AbstractProcessor
 										if (valLocStr[0].equals("mapto") | valLocStr[0].equals("maptofrom"))
 										{
 											wr.append(
-													"\t\tJCublas.cublasSetVector(" + oldClassName + ".n2, Sizeof." +
+													"\t\tJCublas.cublasSetVector(" + oldClassObj + "." + valLocStr[1] + ".length, Sizeof." +
 													tempVar.asType().toString().replaceAll("\\[\\]", "").toUpperCase() +
-													", Pointer.to(" + oldClassName + "." + valLocStr[1] + "), 1, " +
-													oldClassName + "." + valLocStr[2] + ", 1);\n"
-											);
+													", Pointer.to(" + oldClassObj + "." + valLocStr[1] + "), 1, " +
+													oldClassObj + "." + valLocStr[2] + ", 1);\n"
+											);  //This writes the JCublas.cublasSetVector(...) function for each of the desired variables into the new file
 										}
 									}
 								}
@@ -153,14 +155,14 @@ public class targetDataP extends AbstractProcessor
 								{
 									if(tempVar.getSimpleName().toString().equals(valLocStr[1]))
 									{
-										if (valLocStr[0].equals("maptofrom"))
+										if (valLocStr[0].equals("maptofrom"))   //Only processes variables flagged with maptofrom
 										{
 											wr.append(
-													"\t\tJCublas.cublasGetVector(" + oldClassName + ".n2, Sizeof." +
+													"\t\tJCublas.cublasGetVector(" + oldClassObj + "." + valLocStr[1] + ".length, Sizeof." +
 													tempVar.asType().toString().replaceAll("\\[\\]", "").toUpperCase() +
-													", " + oldClassName + "." + valLocStr[2] + ", 1, Pointer.to(" + oldClassName +
+													", " + oldClassObj + "." + valLocStr[2] + ", 1, Pointer.to(" + oldClassObj +
 													"." + valLocStr[1] + "), 1);\n"
-											);
+											);  //This writes the JCublas.cublasGetVector(...) function for each of the desired variables into the new file
 										}
 									}
 								}
@@ -190,8 +192,8 @@ public class targetDataP extends AbstractProcessor
 										if (valLocStr[0].equals("mapto") | valLocStr[0].equals("maptofrom"))
 										{
 											wr.append(
-													"\t\tJCublas.cublasFree(" + oldClassName + "." + valLocStr[2] + ");\n"
-											);
+													"\t\tJCublas.cublasFree(" + oldClassObj + "." + valLocStr[2] + ");\n"
+											);  //This writes the JCublas.cublasFree(...) function for each of the desired variables into the new file
 										}
 									}
 								}
@@ -199,6 +201,27 @@ public class targetDataP extends AbstractProcessor
 						}
 						wr.append("\t}\n");
 						/*---------------------------------------------<<FREE_END>>----------------------------------------------*/
+
+						wr.append("\n");
+
+						/*---------------------------------------------<<MAIN>>--------------------------------------------------*/
+						/*Creates a main method using the methods created
+						earlier and the methods Run() and Fill() in the
+						annotated class*/
+
+						wr.append("\tpublic static void main(String args[])\n");
+						wr.append("\t{\n");
+						wr.append("\t\tJCublas.cublasInit();\n");
+						wr.append("\t\t" + oldClassObj + ".Fill();\n");
+						wr.append("\t\tmapto();\n");
+						wr.append("\t\t" + oldClassObj + ".Run();\n");
+						wr.append("\t\tmaptofrom();\n");
+						wr.append("\t\tfree();\n");
+						wr.append("\t\tJCublas.cublasShutdown();\n");
+
+						wr.append("\t}\n");
+						/*---------------------------------------------<<MAIN_END>>----------------------------------------------*/
+
 						wr.append( "}");
 					}
 				}
