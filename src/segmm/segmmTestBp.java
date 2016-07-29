@@ -37,6 +37,7 @@ public class segmmTestBp
 		JCublas.cublasFree(segmmTestObj.d_C);
 	}
 
+
 	public static void main(String args[])
 	{
 		JCublas.cublasInit();

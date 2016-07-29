@@ -1,5 +1,4 @@
 Annotations.Processors.immutableProcessor
 Annotations.Processors.mathProcessor
-Annotations.Processors.valPullP
-segmm.Annotations.Processors.maptoP
 segmm.Annotations.Processors.targetDataP
+segmm.Annotations.Processors.runSwitchP

@@ -1,17 +1,14 @@
 package segmm;
 
-//Imports, JCublas
-
 import jcuda.Pointer;
 import jcuda.jcublas.JCublas;
 import segmm.Annotations.*;
+//import segmm.Annotations.runSwitch;
 
-
-@targetData({"mapto, h_A, d_A", "mapto, h_B, d_B", "maptofrom, h_C, d_C"})
+@targetData({"mapto, h_A, n", "mapto, h_B, n", "maptofrom, h_C, n"})
 class segmmTest
 {
-	// Matrix size
-	private static final int N = 275;
+	private static final int N = 275;   // Matrix size
 	static Pointer d_A = new Pointer();
 	static Pointer d_B = new Pointer();
 	static Pointer d_C = new Pointer();
@@ -37,6 +34,8 @@ class segmmTest
 			h_C[i] = (float)Math.random();
 		}
 	}
+
+
 	public static void Run() //Used to run the desired code in the generated class
 	{
 		JCublas.cublasSgemm('n', 'n', N, N, N, alpha, d_A, N, d_B, N, beta, d_C, N);
