@@ -1,7 +1,7 @@
 package segmm.Annotations.Processors;
 
-
 import segmm.Annotations.targetData;
+import segmm.Annotations.Processors.Util.fCallWriterBu;
 
 import java.io.IOException;
 import java.io.Writer;
@@ -14,8 +14,6 @@ import javax.lang.model.SourceVersion;
 
 import javax.tools.Diagnostic;
 import javax.tools.JavaFileObject;
-
-
 
 @SupportedAnnotationTypes("segmm.Annotations.targetData")
 @SupportedSourceVersion(SourceVersion.RELEASE_8)
@@ -59,7 +57,7 @@ public class targetDataP extends AbstractProcessor
 					final String oldClassPath = packageElement.getQualifiedName() + "." + oldClassName; //File path to the annotated class
 					final String newClassName = typeElement.getSimpleName().toString() + "Bp";          //Name of the generated class
 					final String newClassPath = packageElement.getQualifiedName() + "." + newClassName; //File path to the generated class
-					final String oldClassObj = oldClassName + "Obj";
+					//final String oldClassObj = oldClassName + "Obj";
 
 					//Creates new class with same name as annotated class appended with 'Bp'
 					final JavaFileObject fileObject = processingEnv.getFiler().createSourceFile
@@ -68,6 +66,8 @@ public class targetDataP extends AbstractProcessor
 							);
 					try(Writer wr = fileObject.openWriter())
 					{
+						fCallWriterBu gtr = new fCallWriterBu(typeElement.getEnclosedElements(), valLoc, oldClassName, newClassName);
+
 						//Package, import, and class declaration
 						wr.append("package " + packageElement.getQualifiedName() + ";\n\n");
 						wr.append("import jcuda.Pointer;\n");
@@ -75,130 +75,14 @@ public class targetDataP extends AbstractProcessor
 						wr.append("import jcuda.jcublas.JCublas;\n");
 						wr.append("import " + oldClassPath + ";\n\n");
 						wr.append("public class " + newClassName + " \n{\n" );
-						wr.append("\tpublic static " + oldClassName + " " + oldClassObj + " = new " + oldClassName + "();\n");
 
-						/*---------------------------------------------<<MAPTO>>-------------------------------------------------*/
-						/*creates new method 'mapto' that handles
-						sending the correct variables to the GPU*/
+						wr.append(gtr.constructor());
+						wr.append(gtr.alloc());
+						wr.append(gtr.mapto());
+						wr.append(gtr.mapfrom());
+						wr.append(gtr.free());
 
-						wr.append("\tpublic static void mapto()\n");
-						wr.append("\t{\n");
-						for(final Element encElm: typeElement.getEnclosedElements())    //loops through enclosed elements in annotated class
-						{
-							if(encElm instanceof VariableElement)   //Only instances of Variable elements will be processed
-							{
-								VariableElement tempVar = (VariableElement) encElm;
-								for(String[] valLocStr : valLoc)    //loops through String arrays stored in list valLoc, desired targets
-								{
-									if(tempVar.getSimpleName().toString().equals(valLocStr[1])) //Only Variables with same name as desired target will be processed, loops until one is found
-									{
-										if (valLocStr[0].equals("mapto") | valLocStr[0].equals("maptofrom"))    //Checks syntax of array and makes sure user wants to send said variable to the GPU
-										{
-											wr.append(
-													"\t\tJCublas.cublasAlloc(" + oldClassObj + ".n2, Sizeof." +
-													tempVar.asType().toString().replaceAll("\\[\\]", "").toUpperCase() +
-													", " + oldClassObj + "." + valLocStr[2] + ");\n"
-											);
-										}
-									}
-								}
-							}
-						}
-						wr.append("\n");
-
-						for(final Element encElm: typeElement.getEnclosedElements())
-						{
-							if (encElm instanceof VariableElement)
-							{
-								VariableElement tempVar = (VariableElement) encElm;
-								for(String[] valLocStr : valLoc)
-								{
-									if(tempVar.getSimpleName().toString().equals(valLocStr[1]))
-									{
-										if (valLocStr[0].equals("mapto") | valLocStr[0].equals("maptofrom"))
-										{
-											wr.append(
-													"\t\tJCublas.cublasSetVector(" + oldClassObj + ".n2, Sizeof." +
-													tempVar.asType().toString().replaceAll("\\[\\]", "").toUpperCase() +
-													", Pointer.to(" + oldClassObj + "." + valLocStr[1] + "), 1, " +
-													oldClassObj + "." + valLocStr[2] + ", 1);\n"
-											);
-										}
-									}
-								}
-							}
-						}
-						wr.append("\t}\n");
-						/*---------------------------------------------<<MAPTO_END>>---------------------------------------------*/
-
-						wr.append("\n");
-
-						/*---------------------------------------------<<MAPTOFROM>>---------------------------------------------*/
-						/*creates new method 'maptofrom' that handles
-						pulling the correct variables back from the
-						GPU after computation is done*/
-
-						wr.append("\tpublic static void maptofrom()\n");
-						wr.append("\t{\n");
-						for(final Element encElm: typeElement.getEnclosedElements())
-						{
-							if (encElm instanceof VariableElement)
-							{
-								VariableElement tempVar = (VariableElement) encElm;
-								for(String[] valLocStr : valLoc)
-								{
-									if(tempVar.getSimpleName().toString().equals(valLocStr[1]))
-									{
-										if (valLocStr[0].equals("maptofrom"))
-										{
-											wr.append(
-													"\t\tJCublas.cublasGetVector(" + oldClassObj + ".n2, Sizeof." +
-													tempVar.asType().toString().replaceAll("\\[\\]", "").toUpperCase() +
-													", " + oldClassObj + "." + valLocStr[2] + ", 1, Pointer.to(" + oldClassObj +
-													"." + valLocStr[1] + "), 1);\n"
-											);
-										}
-									}
-								}
-							}
-						}
-						wr.append("\t}\n");
-						/*---------------------------------------------<<MAPTOFROM_END>>-----------------------------------------*/
-
-						wr.append("\n");
-
-						/*---------------------------------------------<<FREE>>--------------------------------------------------*/
-						/*creates new method 'free' that handles clearing
-						the memory from the GPU once the computation is
-						finished*/
-
-						wr.append("\tpublic static void free()\n");
-						wr.append("\t{\n");
-						for(final Element encElm: typeElement.getEnclosedElements())
-						{
-							if (encElm instanceof VariableElement)
-							{
-								VariableElement tempVar = (VariableElement) encElm;
-								for(String[] valLocStr : valLoc)
-								{
-									if(tempVar.getSimpleName().toString().equals(valLocStr[1]))
-									{
-										if (valLocStr[0].equals("mapto") | valLocStr[0].equals("maptofrom"))
-										{
-											wr.append(
-													"\t\tJCublas.cublasFree(" + oldClassObj + "." + valLocStr[2] + ");\n"
-											);
-										}
-									}
-								}
-							}
-						}
-						wr.append("\t}\n");
-						/*---------------------------------------------<<FREE_END>>----------------------------------------------*/
-
-						wr.append("\n");
-
-						/*---------------------------------------------<<MAIN>>--------------------------------------------------*/
+						/*-------------------------------------------------------<<MAIN>>------------------------------------------------------------*/
 						/*Creates a main method using the methods created
 						earlier and the methods Run() and Fill() in the
 						annotated class*/
@@ -206,15 +90,15 @@ public class targetDataP extends AbstractProcessor
 						wr.append("\tpublic static void main(String args[])\n");
 						wr.append("\t{\n");
 						wr.append("\t\tJCublas.cublasInit();\n");
-						wr.append("\t\t" + oldClassObj + ".Fill();\n");
+						wr.append("\t\t" + oldClassName + ".Fill();\n");
 						wr.append("\t\tmapto();\n");
-						wr.append("\t\t" + oldClassObj + ".Run();\n");
-						wr.append("\t\tmaptofrom();\n");
+						wr.append("\t\t" + oldClassName + ".Run();\n");
+						wr.append("\t\tmapfrom();\n");
 						wr.append("\t\tfree();\n");
 						wr.append("\t\tJCublas.cublasShutdown();\n");
 
 						wr.append("\t}\n");
-						/*---------------------------------------------<<MAIN_END>>----------------------------------------------*/
+						/*-------------------------------------------------------<<MAIN_END>>--------------------------------------------------------*/
 
 						wr.append( "}");
 					}

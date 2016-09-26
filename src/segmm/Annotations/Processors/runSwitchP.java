@@ -1,9 +1,14 @@
 package segmm.Annotations.Processors;
 
+import com.sun.tools.internal.xjc.model.CClassInfoParent;
 import segmm.Annotations.runSwitch;
 
-import java.io.IOException;
-import java.io.Writer;
+import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import javax.annotation.processing.*;
 import javax.lang.model.element.*;
@@ -14,6 +19,8 @@ import javax.tools.FileObject;
 import javax.tools.JavaFileObject;
 import javax.tools.StandardLocation;
 
+import segmm.Annotations.Processors.Util.macroPr;
+
 @SupportedAnnotationTypes("segmm.Annotations.runSwitch")
 @SupportedSourceVersion(SourceVersion.RELEASE_8)
 
@@ -22,36 +29,64 @@ public class runSwitchP extends AbstractProcessor
 	@Override
 	public boolean process(final Set<? extends TypeElement> annotations, RoundEnvironment roundEnv)
 	{
-		try
+		for (final Element elm : roundEnv.getElementsAnnotatedWith(runSwitch.class))
 		{
+			runSwitch val = elm.getAnnotation(runSwitch.class);
+			String[] targetIp = val.target();
+			String path = val.path();
+			List<String[]> valLoc = new ArrayList<>();
 
-			for (final Element elm : roundEnv.getElementsAnnotatedWith(runSwitch.class))
+			for(int i = 0; i < targetIp.length; i++)
 			{
-				processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE, "1");
-				processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE, StandardLocation.CLASS_PATH.toString());
-				FileObject inFile = processingEnv.getFiler().getResource
-						(
-								StandardLocation.SOURCE_PATH, "",
-								elm.asType().toString().replace(".", "/") + ".java"
-						);
-				processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE, "2");
-				FileObject out_file = processingEnv.getFiler().getResource
-				(
-						StandardLocation.SOURCE_OUTPUT, "",
-						elm.asType().toString().replace(".", "/") + "_gen.java"
-				);
-
-				CharSequence data = inFile.getCharContent(false);
-
-				processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE, data.toString());
-
+				targetIp[i] = targetIp[i].replaceAll(" ", "");
+				String[] z = targetIp[i].split(",");
+				valLoc.add(z);
 			}
 
-		}
-		catch (Exception e)
-		{
-			e.printStackTrace();
-			processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, e.getMessage());
+			if (elm instanceof TypeElement)
+			{
+				TypeElement typeElement = (TypeElement) elm;
+				PackageElement packageElement = (PackageElement) typeElement.getEnclosingElement();
+
+				final String oldClassName = typeElement.getSimpleName().toString() + ".java";
+				final String newClassName = typeElement.getSimpleName().toString() + "_gen.java";
+				final String classPackage = packageElement.getQualifiedName().toString().replace(".", "\\");
+
+				final Path inFile = Paths.get(path + "\\" + classPackage + "\\" + oldClassName);
+				final Path outFile = Paths.get(path + "\\" + classPackage + "\\" + newClassName);
+				List<String> content = new ArrayList<>();
+
+				try
+				{
+					content = Files.readAllLines(inFile);
+					OutputStream out = Files.newOutputStream(outFile);
+					BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(out));
+
+					int i = 1;
+					for(String s : content)
+					{
+						processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE, i + " " + s);
+						i++;
+					}
+
+					macroPr mpr = new macroPr(typeElement.getEnclosedElements(), valLoc, content, elm.getSimpleName().toString());
+					content = mpr.run();
+
+					for(String line: content)
+					{
+						writer.append(line + "\n");
+					}
+
+					writer.close();
+
+				}
+				catch (IOException x)
+				{
+					processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, x.toString());
+				}
+			}
+
+
 		}
 
 		return true;

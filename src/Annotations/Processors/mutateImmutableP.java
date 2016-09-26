@@ -17,6 +17,7 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.SourceVersion;
 
+import javax.tools.Diagnostic;
 import javax.tools.JavaFileObject;
 
 @SupportedAnnotationTypes("Annotations.Immutable")
@@ -38,6 +39,9 @@ public class mutateImmutableP extends AbstractProcessor
 	{
 		for (final Element element : roundEnv.getElementsAnnotatedWith(Immutable.class))
 		{
+			Immutable val = element.getAnnotation(Immutable.class);
+			String[] valIp = val.value();
+
 			final TreePathScanner<Object, CompilationUnitTree> scanner = new TreePathScanner<Object, CompilationUnitTree>()
 			{
 				@Override
@@ -56,9 +60,15 @@ public class mutateImmutableP extends AbstractProcessor
 								{
 									super.visitVarDef(tree);
 
-									if ((tree.mods.flags & Flags.FINAL) == 0)
+									for(String targetD: valIp)
 									{
-										tree.mods.flags |= Flags.FINAL;
+										if (tree.name.toString().equals(targetD))
+										{
+											int x = tree.getPreferredPosition();
+											processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE, "Found target: " + targetD + "\nPosition: " + x);
+
+
+										}
 									}
 								}
 							});
